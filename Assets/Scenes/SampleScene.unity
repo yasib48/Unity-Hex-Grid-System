@@ -183,7 +183,6 @@ MonoBehaviour:
   m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
   m_RequiresDepthTexture: 0
   m_RequiresColorTexture: 0
-  m_Version: 2
   m_TaaSettings:
     m_Quality: 3
     m_FrameInfluence: 0.1
@@ -191,6 +190,7 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+  m_Version: 2
 --- !u!20 &519420031
 Camera:
   m_ObjectHideFlags: 0
@@ -371,7 +371,7 @@ GameObject:
   - component: {fileID: 719511436}
   - component: {fileID: 719511435}
   m_Layer: 0
-  m_Name: hs
+  m_Name: Builder
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -389,20 +389,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 872437d9eda09e945b3a3b2c5d7ca7c4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Width: 12
-  Height: 6
+  Width: 8
+  Height: 5
   cellSize: 1
-  startOffset: {x: -6, y: -3}
+  startOffset: {x: -5, y: -3}
   Grid: {fileID: 7893266391991213776, guid: 0b7b3917d1b88e045a3ec77ed462d4ba, type: 3}
   shape: 0
   useCustomShape: 1
   customShape:
-  - cells: 010101010101010101010101
-  - cells: 010101010101010101010101
-  - cells: 010101010101010101010101
-  - cells: 010101010101010101010101
-  - cells: 010101010101010000000000
-  - cells: 010101010101010000000000
+  - cells: 0101010101010101
+  - cells: 0100000100010101
+  - cells: 0100000100010101
+  - cells: 0001010101010101
+  - cells: 0101010101010101
 --- !u!4 &719511436
 Transform:
   m_ObjectHideFlags: 0
