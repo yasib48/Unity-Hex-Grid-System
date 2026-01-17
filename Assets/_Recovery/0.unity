@@ -270,12 +270,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   builder: {fileID: 719511435}
-  building: {fileID: 1187619103505919820, guid: 35a5f1fc0cb8d0d4e97a7bb2483ffe6c, type: 3}
-  building2: {fileID: 0}
-  building3: {fileID: 0}
-  hologramObj: {fileID: 1187619103505919820, guid: 35a5f1fc0cb8d0d4e97a7bb2483ffe6c, type: 3}
+  building: {fileID: 5801407063054862753, guid: 04e7a81645f8cee42a690fe0be303ee0, type: 3}
+  building2: {fileID: 5801407063054862753, guid: b548aa4b543ba664d8ba91b6f6066c2a, type: 3}
+  building3: {fileID: 5801407063054862753, guid: 7f2ec7f596fd4244dbce0d834f7aeddf, type: 3}
+  hologramObj: {fileID: 0}
   alpha: 0.4
-  currentBuilding: 0
+  a: 0
 --- !u!1 &619394800
 GameObject:
   m_ObjectHideFlags: 0
@@ -389,26 +389,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 872437d9eda09e945b3a3b2c5d7ca7c4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Width: 9
+  Width: 8
   Height: 5
   cellSize: 1
-  startOffset: {x: -4, y: -2}
-  Grid: {fileID: 2163190285325445267, guid: 1987d0d865c7d7d4d83cee996b74b715, type: 3}
+  startOffset: {x: -5, y: -3}
+  Grid: {fileID: 7893266391991213776, guid: 0b7b3917d1b88e045a3ec77ed462d4ba, type: 3}
   shape: 0
-  useCustomShape: 0
+  useCustomShape: 1
   customShape:
-  - cells: 010101010101010101
-  - cells: 010101010101010101
-  - cells: 010101010101010101
-  - cells: 010101010101010101
-  - cells: 010101010101010101
-  useCustomSoil: 1
-  customSoil:
-  - cells: 000000000000000000
-  - cells: 000000000000000000
-  - cells: 000001010101010000
-  - cells: 000000000000000000
-  - cells: 000000000000000000
+  - cells: 0101010101010101
+  - cells: 0100000100010101
+  - cells: 0100000100010101
+  - cells: 0001010101010101
+  - cells: 0101010101010101
 --- !u!4 &719511436
 Transform:
   m_ObjectHideFlags: 0

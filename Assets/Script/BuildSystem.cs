@@ -1,6 +1,7 @@
+// BuildSystem.cs
 using System;
+using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 public class BuildSystem : MonoBehaviour
 {
@@ -9,162 +10,239 @@ public class BuildSystem : MonoBehaviour
     public GameObject hologramObj;
     public float alpha = 0.4f;
 
-    int sizeX = 2;
-    int sizeY = 2;
-    public a a;
-    void Start()
-    {
+    public BuildingType currentBuilding;
 
+    void Update()
+    {
+        HandleInput();
+        UpdateHologram();
+        HandleBuild();
     }
 
-    // Update is called once per frame
-    void Update()
+    void HandleInput()
     {
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            switch (a)
+            currentBuilding = (BuildingType)(((int)currentBuilding + 1) % 3);
+
+            if (hologramObj != null)
             {
-                case a.uc:
-                    a = a.ilk;
-                    hologram(building, 1, 1);
-
-                    break;
-                case a.iki:
-
-                    a = a.uc;
-                    hologram(building3, 2, 1);
-
-                    break;
-                case a.ilk:
-                    a = a.iki;
-                    hologram(building2, 2, 2);
-
-                    break;
+                Destroy(hologramObj);
+                hologramObj = null;
             }
-            Debug.Log("Þu anki durum: " + a);
-        }
-        if (a == a.ilk)
-        {
-            Build(building, 1, 1);
-            hologram(building, 1, 1);
-        }
-        else if (a == a.iki)
-        {
-            Build(building2, 2, 2);
-            hologram(building2, 2, 2);
-        }
-        else if (a == a.uc)
-        {
-            Build(building3, 2, 1);
-            hologram(building3, 2, 1);
-        }
 
+            Debug.Log("Þu anki bina: " + currentBuilding);
+        }
+    }
+
+    void UpdateHologram()
+    {
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        mouseWorldPos.z = 0;
+        builder.GetXY(mouseWorldPos, out int x, out int y);
+
+        var (prefab, size) = GetCurrentBuildingData();
+
+        bool canPlace = Input.GetKey(KeyCode.LeftShift) ? CanPlaceBuilding(x, y, size) : CanPlaceSoil(x, y, size);
+
+        if (canPlace)
+        {
+            CreateHologram(prefab);
+            Vector3 snappedPos = builder.GetWorldPos(x, y);
+            hologramObj.transform.position = snappedPos;
+            SetHologramColor(new Color(0, 1, 0, alpha));
+        }
+        else if (hologramObj != null)
+        {
+            SetHologramColor(new Color(1, 0, 0, alpha));
+            Vector3 snappedPos = builder.GetWorldPos(x, y);
+            hologramObj.transform.position = snappedPos;
+        }
+    }
+
+    void CreateHologram(GameObject prefab)
+    {
+        if (hologramObj == null)
+        {
+            hologramObj = Instantiate(prefab);
+
+            foreach (var comp in hologramObj.GetComponents<Behaviour>())
+            {
+                comp.enabled = false;
+            }
+
+            var sr = hologramObj.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                sr.enabled = true;
+                Color c = sr.color;
+                c.a = alpha;
+                sr.color = c;
+            }
+
+            foreach (var col in hologramObj.GetComponents<Collider2D>())
+            {
+                col.enabled = false;
+            }
+        }
+    }
+
+    void SetHologramColor(Color color)
+    {
         if (hologramObj != null)
+        {
+            var sr = hologramObj.GetComponent<SpriteRenderer>();
+            if (sr != null)
+            {
+                sr.color = color;
+            }
+        }
+    }
+
+    void HandleBuild()
+    {
+        // Sol týk - Toprak yerleþtir
+        if (Input.GetMouseButtonDown(0))
         {
             Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             mouseWorldPos.z = 0;
             builder.GetXY(mouseWorldPos, out int x, out int y);
-            Vector3 snappedPos = builder.GetWorldPos(x, y);
-            hologramObj.transform.position = snappedPos;
-        }
 
+            var (prefab, size) = GetCurrentBuildingData();
 
-    }
-    void hologram(GameObject buildObj,int Sx, int Sy)
-    {
-        
-        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorldPos.z = 0;  // 2D için z sýfýr olmalý
-        builder.GetXY(mouseWorldPos, out int x, out int y);
-        if (CanPlace(x, y, Sx, Sy)) 
-        {
-             if(hologramObj == buildObj)
+            if (CanPlaceSoil(x, y, size))
             {
-                Destroy(hologramObj);
-                Debug.Log("ah");
+                SetSoil(x, y, size, true);
+                Vector3 buildPos = builder.GetWorldPos(x, y);
+                Instantiate(prefab, buildPos, Quaternion.identity);
             }
-
-
-
-            if (hologramObj == null )
-             {
-                Debug.Log("bab");
-
-                hologramObj = Instantiate(buildObj);
-                foreach (var comp in hologramObj.GetComponents<Behaviour>())
-                {
-                    comp.enabled = false;
-                }
-                hologramObj.GetComponent<SpriteRenderer>().enabled = true;
-                SpriteRenderer sr = hologramObj.GetComponent<SpriteRenderer>();
-                Color c = sr.color;
-                c.a = alpha;
-                sr.color = c;
-                Debug.Log("gfe");
-
-             }
         }
-        else
-        {
-            Destroy(hologramObj );
-        }
-    }
-    void Build(GameObject buildObj,int Sx,int Sy)
-    {
 
-        if (Input.GetMouseButtonDown(0))
+        // Sað týk - Bina inþa et
+        if (Input.GetMouseButtonDown(1))
         {
             Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            mouseWorldPos.z = 0;  // 2D için z sýfýr olmalý
+            mouseWorldPos.z = 0;
             builder.GetXY(mouseWorldPos, out int x, out int y);
-            if (builder.GetGrid(x, y) == null || !builder.GetGrid(x, y).isEmpty)
-                return;
 
-            if (CanPlace(x, y, Sx, Sy))
+            var (prefab, size) = GetCurrentBuildingData();
+
+            if (CanPlaceBuilding(x, y, size))
             {
-                SetOccupied(x, y, Sx, Sy, true);
-                Vector3 cornerPos = new Vector3(
-                x + builder.startOffset.x,
-                y + builder.startOffset.y,
-                0) * builder.cellSize;
-
-                Instantiate(buildObj, cornerPos, Quaternion.identity);
+                SetBuilding(x, y, size, true);
+                Vector3 buildPos = builder.GetWorldPos(x, y);
+                Instantiate(prefab, buildPos, Quaternion.identity);
             }
         }
     }
-    bool CanPlace(int startX, int startY, int width, int height)
-    {
-        if (startX + width > builder.Width || startY + height > builder.Height)
-            return false;
 
-        for (int x = 0; x < width; x++)
+    (GameObject prefab, int size) GetCurrentBuildingData()
+    {
+        return currentBuilding switch
         {
-            for (int y = 0; y < height; y++)
-            {
-                var gridCell = builder.GetGrid(startX + x, startY + y);
-                if (gridCell == null) return false;   // Burada null ise hemen false
-                if (gridCell.gameObject == null) return false;  // Ek güvenlik
-                if (!gridCell.isEmpty) return false;
-            }
+            BuildingType.Small => (building, 1),
+            BuildingType.Medium => (building2, 2),
+            BuildingType.Large => (building3, 3),
+            _ => (building, 1)
+        };
+    }
+
+    // Toprak yerleþtirilebilir mi? (hasSoil = false olmalý)
+    bool CanPlaceSoil(int centerX, int centerY, int size)
+    {
+        var hexes = GetHexesInRadius(centerX, centerY, size - 1);
+
+        foreach (var hex in hexes)
+        {
+            var gridCell = builder.GetGrid(hex.x, hex.y);
+            if (gridCell == null) return false;
+            if (gridCell.hasSoil) return false;
         }
         return true;
     }
 
-
-    void SetOccupied(int startX, int startY, int width, int height, bool occupied)
+    // Bina yerleþtirilebilir mi? (hasSoil = true VE hasBuilding = false olmalý)
+    bool CanPlaceBuilding(int centerX, int centerY, int size)
     {
-        for (int x = 0; x < width; x++)
+        var hexes = GetHexesInRadius(centerX, centerY, size - 1);
+        foreach (var hex in hexes)
         {
-            for (int y = 0; y < height; y++)
+            var gridCell = builder.GetGrid(hex.x, hex.y);
+            if (gridCell == null) return false;
+            if (!gridCell.hasSoil) return false;
+            if (gridCell.hasBuilding) return false;
+        }
+        return true;
+    }
+
+    void SetSoil(int centerX, int centerY, int size, bool value)
+    {
+        var hexes = GetHexesInRadius(centerX, centerY, size - 1);
+
+        foreach (var hex in hexes)
+        {
+            Grid grid = builder.GetGrid(hex.x, hex.y);
+            if (grid != null)
             {
-                builder.GetGrid(startX + x, startY + y).isEmpty = !occupied;
+                grid.SetSoil(value);
             }
         }
     }
+
+    void SetBuilding(int centerX, int centerY, int size, bool value)
+    {
+        var hexes = GetHexesInRadius(centerX, centerY, size - 1);
+
+        foreach (var hex in hexes)
+        {
+            Grid grid = builder.GetGrid(hex.x, hex.y);
+            if (grid != null)
+            {
+                grid.hasBuilding = value;
+            }
+        }
+    }
+
+    List<Vector2Int> GetHexesInRadius(int centerX, int centerY, int radius)
+    {
+        List<Vector2Int> results = new List<Vector2Int>();
+        results.Add(new Vector2Int(centerX, centerY));
+
+        if (radius <= 0) return results;
+
+        int cz = centerY;
+        int cx = centerX - (cz - (cz & 1)) / 2;
+        int cy = -cx - cz;
+
+        for (int dx = -radius; dx <= radius; dx++)
+        {
+            for (int dy = Mathf.Max(-radius, -dx - radius); dy <= Mathf.Min(radius, -dx + radius); dy++)
+            {
+                int dz = -dx - dy;
+
+                int nx = cx + dx;
+                int ny = cy + dy;
+                int nz = cz + dz;
+
+                int col = nx + (nz - (nz & 1)) / 2;
+                int row = nz;
+
+                if (col >= 0 && col < builder.Width && row >= 0 && row < builder.Height)
+                {
+                    var pos = new Vector2Int(col, row);
+                    if (!results.Contains(pos))
+                        results.Add(pos);
+                }
+            }
+        }
+
+        return results;
+    }
 }
-public enum a
+
+public enum BuildingType
 {
-    ilk,
-    iki,
-    uc
+    Small,
+    Medium,
+    Large
 }

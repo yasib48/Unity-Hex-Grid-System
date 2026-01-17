@@ -1,3 +1,4 @@
+// GridBuilder.cs
 using UnityEngine;
 using System.Collections.Generic;
 using System;
@@ -17,14 +18,23 @@ public class GridBuilder : MonoBehaviour
     public bool useCustomShape = false;
     public Row[] customShape;
 
+    public bool useCustomSoil = false;
+    public Row[] customSoil;
+
     private GameObject[,] gridObjects;
     public int[,] GridArray;
+
+    private float HexWidth => Mathf.Sqrt(3f) * cellSize;
+    private float HexHeight => 2f * cellSize;
+    private float HexVerticalSpacing => HexHeight * 0.75f;
 
     void Awake()
     {
         if (Application.isPlaying)
             Build();
     }
+
+    // GridBuilder.cs - Build() metodundaki deðiþiklik
 
     public void Build()
     {
@@ -43,12 +53,32 @@ public class GridBuilder : MonoBehaviour
             {
                 Vector3 worldPos = GetWorldPos(pos.x, pos.y);
                 GameObject a = Instantiate(Grid, worldPos, Quaternion.identity, transform);
-                a.name = $"Grid {pos.x} {pos.y}";
+                a.name = $"Hex {pos.x} {pos.y}";
                 gridObjects[pos.x, pos.y] = a;
+
+                Grid gridComp = a.GetComponent<Grid>();
+                if (gridComp != null)
+                {
+                    gridComp.gridX = pos.x;
+                    gridComp.gridY = pos.y;
+
+                    // Varsayýlan olarak topraksýz
+                    bool shouldHaveSoil = false;
+
+                    // Eðer custom soil açýksa ve bu hücre iþaretliyse topraklý yap
+                    if (useCustomSoil && customSoil != null &&
+                        pos.y < customSoil.Length &&
+                        customSoil[pos.y]?.cells != null &&
+                        pos.x < customSoil[pos.y].cells.Length)
+                    {
+                        shouldHaveSoil = customSoil[pos.y].cells[pos.x];
+                    }
+
+                    gridComp.SetSoil(shouldHaveSoil);
+                }
             }
         }
     }
-
     void ClearGrid()
     {
         if (gridObjects == null) return;
@@ -75,14 +105,80 @@ public class GridBuilder : MonoBehaviour
 
     public Vector3 GetWorldPos(int x, int y)
     {
-        return new Vector3(x + startOffset.x, y + startOffset.y) * cellSize;
+        float xPos = x * HexWidth + (y % 2 == 1 ? HexWidth * 0.5f : 0f);
+        float yPos = y * HexVerticalSpacing;
+
+        return new Vector3(
+            xPos + startOffset.x * HexWidth,
+            yPos + startOffset.y * HexVerticalSpacing,
+            0
+        );
     }
 
     public void GetXY(Vector3 worldPos, out int x, out int y)
     {
-        Vector3 localPos = worldPos / cellSize - new Vector3(startOffset.x, startOffset.y);
-        x = Mathf.FloorToInt(localPos.x);
-        y = Mathf.FloorToInt(localPos.y);
+        float px = worldPos.x - startOffset.x * HexWidth;
+        float py = worldPos.y - startOffset.y * HexVerticalSpacing;
+
+        float q = (Mathf.Sqrt(3f) / 3f * px - 1f / 3f * py) / cellSize;
+        float r = (2f / 3f * py) / cellSize;
+
+        float cubeX = q;
+        float cubeZ = r;
+        float cubeY = -cubeX - cubeZ;
+
+        int rx = Mathf.RoundToInt(cubeX);
+        int ry = Mathf.RoundToInt(cubeY);
+        int rz = Mathf.RoundToInt(cubeZ);
+
+        float xDiff = Mathf.Abs(rx - cubeX);
+        float yDiff = Mathf.Abs(ry - cubeY);
+        float zDiff = Mathf.Abs(rz - cubeZ);
+
+        if (xDiff > yDiff && xDiff > zDiff)
+            rx = -ry - rz;
+        else if (yDiff > zDiff)
+            ry = -rx - rz;
+        else
+            rz = -rx - ry;
+
+        x = rx + (rz - (rz & 1)) / 2;
+        y = rz;
+    }
+
+    public List<Vector2Int> GetNeighbors(int x, int y)
+    {
+        List<Vector2Int> neighbors = new List<Vector2Int>();
+
+        int[][] oddNeighbors = new int[][]
+        {
+            new int[] { 1, 0 }, new int[] { 0, -1 }, new int[] { -1, -1 },
+            new int[] { -1, 0 }, new int[] { -1, 1 }, new int[] { 0, 1 }
+        };
+
+        int[][] evenNeighbors = new int[][]
+        {
+            new int[] { 1, 0 }, new int[] { 1, -1 }, new int[] { 0, -1 },
+            new int[] { -1, 0 }, new int[] { 0, 1 }, new int[] { 1, 1 }
+        };
+
+        int[][] directions = (y % 2 == 1) ? oddNeighbors : evenNeighbors;
+
+        foreach (var dir in directions)
+        {
+            int nx = x + dir[0];
+            int ny = y + dir[1];
+
+            if (nx >= 0 && nx < Width && ny >= 0 && ny < Height)
+            {
+                if (gridObjects[nx, ny] != null)
+                {
+                    neighbors.Add(new Vector2Int(nx, ny));
+                }
+            }
+        }
+
+        return neighbors;
     }
 
     public void SetValue(int x, int y)
@@ -123,7 +219,6 @@ public class GridBuilder : MonoBehaviour
             return cells;
         }
 
-        // Default Shapes
         switch (shape)
         {
             case GridShape.Rectangle:
@@ -157,8 +252,6 @@ public class GridBuilder : MonoBehaviour
         return cells;
     }
 
-    #region PreviewInEditor
-
 #if UNITY_EDITOR
     void OnValidate()
     {
@@ -174,7 +267,7 @@ public class GridBuilder : MonoBehaviour
                     customShape[y] = new Row { cells = new bool[Width] };
                     for (int x = 0; x < Width; x++)
                     {
-                        customShape[y].cells[x] = true; // BAÞLANGIÇTA HEPSÝ TRUE
+                        customShape[y].cells[x] = true;
                     }
                 }
             }
@@ -192,13 +285,32 @@ public class GridBuilder : MonoBehaviour
                     }
                 }
             }
+
+            // Custom Soil array'ini de ayarla
+            if (customSoil == null || customSoil.Length != Height)
+            {
+                customSoil = new Row[Height];
+                for (int y = 0; y < Height; y++)
+                {
+                    customSoil[y] = new Row { cells = new bool[Width] };
+                }
+            }
+            else
+            {
+                for (int y = 0; y < Height; y++)
+                {
+                    if (customSoil[y].cells == null || customSoil[y].cells.Length != Width)
+                    {
+                        customSoil[y].cells = new bool[Width];
+                    }
+                }
+            }
         }
     }
 #endif
 
     void OnDrawGizmos()
     {
-        Gizmos.color = Color.green;
         HashSet<Vector2Int> cells = GetShapeCells();
 
         foreach (var pos in cells)
@@ -206,13 +318,34 @@ public class GridBuilder : MonoBehaviour
             if (pos.x < Width && pos.y < Height)
             {
                 Vector3 center = GetWorldPos(pos.x, pos.y);
-                Gizmos.DrawWireCube(center, Vector3.one * cellSize * 0.95f);
+                DrawHexagonGizmo(center, cellSize);
             }
         }
     }
 
-    #endregion
+    void DrawHexagonGizmo(Vector3 center, float size)
+    {
+        Gizmos.color = Color.green;
+
+        Vector3[] corners = new Vector3[6];
+        for (int i = 0; i < 6; i++)
+        {
+            float angle = 60f * i - 30f;
+            float rad = Mathf.Deg2Rad * angle;
+            corners[i] = center + new Vector3(
+                size * Mathf.Cos(rad),
+                size * Mathf.Sin(rad),
+                0
+            );
+        }
+
+        for (int i = 0; i < 6; i++)
+        {
+            Gizmos.DrawLine(corners[i], corners[(i + 1) % 6]);
+        }
+    }
 }
+
 [Serializable]
 public class Row
 {
